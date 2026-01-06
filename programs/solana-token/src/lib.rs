@@ -126,11 +126,17 @@ pub struct CreateTokenAccount<'info> {
     #[account(mut)]
     pub mint: Account<'info, TokenMint>,
 
-    #[account(init, payer = payer, space = 8 + 32 + 32 + 8, seeds = [b"token", owner.key().as_ref(), mint.key().as_ref()], bump)]
+    #[account(
+        init,
+        payer = payer,
+        space = 8 + 32 + 32 + 8,
+        seeds = [b"token", owner.key().as_ref(), mint.key().as_ref()],
+        bump
+    )]
     pub token_account: Account<'info, TokenAccount>,
 
-    // This is the owner of the token account we're creating.
-    pub owner: Account<'info, TokenAccount>,
+    /// CHECK: This is just used as a seed for the PDA
+    pub owner: AccountInfo<'info>,
 
     #[account(mut)]
     pub payer: Signer<'info>,
@@ -152,7 +158,7 @@ pub struct MintTokens<'info> {
 
 #[derive(Accounts)]
 pub struct Transfer<'info> {
-    #[account(mut, seeds = [b"token", owner.key().as_ref(),], bump, has_one = owner)]
+    #[account(mut, seeds = [b"token", owner.key().as_ref(), from.mint.as_ref()], bump, has_one = owner)]
     pub from: Account<'info, TokenAccount>,
 
     #[account(mut)]
@@ -166,7 +172,7 @@ pub struct Burn<'info> {
     #[account(mut)]
     pub mint: Account<'info, TokenMint>,
 
-    #[account(mut, seeds = [b"token", owner.key().as_ref(),], bump, has_one = owner)]
+    #[account(mut, seeds = [b"token", owner.key().as_ref(), token_account.mint.as_ref()], bump, has_one = owner)]
     pub token_account: Account<'info, TokenAccount>,
 
     pub owner: Signer<'info>,

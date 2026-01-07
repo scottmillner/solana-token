@@ -69,3 +69,20 @@ export async function createTokenAccount(
 
   return pda;
 }
+
+export async function mintTokens(
+  program: Program<SolanaToken>,
+  mintAddress: PublicKey,
+  tokenAccountAddress: PublicKey,
+  authority: PublicKey,
+  amount: number
+): Promise<void> {
+  await program.methods
+    .mintTokens(new anchor.BN(amount))
+    .accounts({
+      mint: mintAddress,
+      tokenAccount: tokenAccountAddress,
+      authority: authority,
+    })
+    .rpc();
+}

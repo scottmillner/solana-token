@@ -86,3 +86,21 @@ export async function mintTokens(
     })
     .rpc();
 }
+
+export async function transferTokens(
+  program: Program<SolanaToken>,
+  fromTokenAccount: PublicKey,
+  toTokenAccount: PublicKey,
+  owner: Keypair,
+  amount: number
+): Promise<void> {
+  await program.methods
+    .transfer(new anchor.BN(amount))
+    .accounts({
+      from: fromTokenAccount,
+      to: toTokenAccount,
+      owner: owner.publicKey,
+    })
+    .signers([owner])
+    .rpc();
+}

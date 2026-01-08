@@ -1,5 +1,11 @@
 import { assert } from "chai";
-import { setup, initializeMint, createTokenAccount, mintTokens } from "./utils";
+import {
+  setup,
+  initializeMint,
+  createTokenAccount,
+  mintTokens,
+  transferTokens,
+} from "./utils";
 import { Keypair } from "@solana/web3.js";
 
 describe("solana-token", () => {
@@ -67,7 +73,7 @@ describe("solana-token", () => {
       mintAddress,
       tokenAccountAddress,
       authority.publicKey,
-      mintAmount
+      1000
     );
 
     // Verify token account balance
@@ -83,5 +89,64 @@ describe("solana-token", () => {
     console.log("✅ Minted tokens");
     console.log("   Token account balance:", accountData.amount.toNumber());
     console.log("   Total supply:", mintData.totalSupply.toNumber());
+  });
+
+  it("Should transfer tokens between users", async () => {
+    // Setup
+    const mintAddress = await initializeMint(
+      program,
+      authority.publicKey,
+      decimals
+    );
+    const user1 = Keypair.generate();
+    const user2 = Keypair.generate();
+
+    const user1TokenAccount = await createTokenAccount(
+      program,
+      mintAddress,
+      user1.publicKey,
+      authority.publicKey
+    );
+    const user2TokenAccount = await createTokenAccount(
+      program,
+      mintAddress,
+      user2.publicKey,
+      authority.publicKey
+    );
+
+    // Mint tokens
+    const mintAmount = 1000;
+    await mintTokens(
+      program,
+      mintAddress,
+      user1TokenAccount,
+      authority.publicKey,
+      mintAmount
+    );
+
+    // Transfer tokens from user1 to user2
+    const transferAmount = 300;
+    await transferTokens(
+      program,
+      user1TokenAccount,
+      user2TokenAccount,
+      user1,
+      transferAmount
+    );
+
+    // Verify balances
+    const user1Data = await program.account.tokenAccount.fetch(
+      user1TokenAccount
+    );
+    const user2Data = await program.account.tokenAccount.fetch(
+      user2TokenAccount
+    );
+
+    assert.equal(user1Data.amount.toNumber(), mintAmount - transferAmount);
+    assert.equal(user2Data.amount.toNumber(), transferAmount);
+
+    console.log("✅ Transferred tokens");
+    console.log("   User1 balance:", user1Data.amount.toNumber());
+    console.log("   User2 balance:", user2Data.amount.toNumber());
   });
 });

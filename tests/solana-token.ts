@@ -5,6 +5,7 @@ import {
   createTokenAccount,
   mintTokens,
   transferTokens,
+  burnTokens,
 } from "./utils";
 import { Keypair } from "@solana/web3.js";
 
@@ -148,5 +149,49 @@ describe("solana-token", () => {
     console.log("✅ Transferred tokens");
     console.log("   User1 balance:", user1Data.amount.toNumber());
     console.log("   User2 balance:", user2Data.amount.toNumber());
+  });
+
+  it("Should burn tokens from user", async () => {
+    // Setup
+    const mintAddress = await initializeMint(
+      program,
+      authority.publicKey,
+      decimals
+    );
+    const user = Keypair.generate();
+    const userTokenAccount = await createTokenAccount(
+      program,
+      mintAddress,
+      user.publicKey,
+      authority.publicKey
+    );
+
+    // Mint tokens for user
+    const mintAmount = 2000;
+    await mintTokens(
+      program,
+      mintAddress,
+      userTokenAccount,
+      authority.publicKey,
+      mintAmount
+    );
+
+    // Burn tokens for user
+    const burnAmount = 500;
+    await burnTokens(program, mintAddress, userTokenAccount, user, burnAmount);
+
+    // Verify user balance
+    const accountData = await program.account.tokenAccount.fetch(
+      userTokenAccount
+    );
+    assert.equal(accountData.amount.toNumber(), mintAmount - burnAmount);
+
+    // Very mint token balance
+    const mintData = await program.account.tokenMint.fetch(mintAddress);
+    assert.equal(mintData.totalSupply.toNumber(), mintAmount - burnAmount);
+
+    console.log("✅ Burned tokens");
+    console.log("   Remaining balance:", accountData.amount.toNumber());
+    console.log("   Total supply:", mintData.totalSupply.toNumber());
   });
 });

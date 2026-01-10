@@ -104,3 +104,21 @@ export async function transferTokens(
     .signers([owner])
     .rpc();
 }
+
+export async function burnTokens(
+  program: Program<SolanaToken>,
+  mintAddress: PublicKey,
+  tokenAccountAddress: PublicKey,
+  owner: Keypair,
+  amount: number
+): Promise<void> {
+  await program.methods
+    .burn(new anchor.BN(amount))
+    .accounts({
+      mint: mintAddress,
+      tokenAccount: tokenAccountAddress,
+      owner: owner.publicKey,
+    })
+    .signers([owner])
+    .rpc();
+}

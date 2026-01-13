@@ -198,24 +198,75 @@ describe("solana-token", () => {
 
   // Error test cases
   it("Should not transfer more than balance", async () => {
-      const mintAddress = await initializeMint(program, authority.publicKey, decimals);
-      const user1 = Keypair.generate();
-      const user2 = Keypair.generate();
+    const mintAddress = await initializeMint(
+      program,
+      authority.publicKey,
+      decimals
+    );
+    const user1 = Keypair.generate();
+    const user2 = Keypair.generate();
 
-      const user1TokenAccount = await createTokenAccount(program, mintAddress, user1.publicKey, authority.publicKey);
-      const user2TokenAccount = await createTokenAccount(program, mintAddress, user2.publicKey, authority.publicKey);
+    const user1TokenAccount = await createTokenAccount(
+      program,
+      mintAddress,
+      user1.publicKey,
+      authority.publicKey
+    );
+    const user2TokenAccount = await createTokenAccount(
+      program,
+      mintAddress,
+      user2.publicKey,
+      authority.publicKey
+    );
 
-      // Mint tokens
-      const mintAmount = 100;
-      await mintTokens(program, mintAddress, user1TokenAccount, authority.publicKey, mintAmount);
+    // Mint tokens
+    const mintAmount = 100;
+    await mintTokens(
+      program,
+      mintAddress,
+      user1TokenAccount,
+      authority.publicKey,
+      mintAmount
+    );
 
-      // Try and transfer more than mint amount (user 1 balance)
-      try {
-        await transferTokens(program, user1TokenAccount, user2TokenAccount, user1, mintAmount + 1);
-        assert.fail("Expected error was not thrown");
-      } catch (error) {
-        assert.include(error.toString(), "InsufficientFunds");
-        console.log("Attempted transfer greater than balance failed as expected.");
-      }
+    // Try and transfer more than mint amount (user 1 balance).
+    try {
+      await transferTokens(
+        program,
+        user1TokenAccount,
+        user2TokenAccount,
+        user1,
+        mintAmount + 1
+      );
+      assert.fail("Expected error was not thrown");
+    } catch (error) {
+      assert.include(error.toString(), "InsufficientFunds");
+      console.log(
+        "Attempted transfer greater than balance failed."
+      );
+    }
+  });
+
+  it("Should not burn more than the balance", async () => {
+    const mintAddress = await initializeMint(
+      program,
+      authority.publicKey,
+      decimals
+    );
+    const user = Keypair.generate();
+    const tokenAccount = await createTokenAccount(program, mintAddress, user.publicKey, authority.publicKey);
+
+    // Mint tokens
+    const mintAmount = 100;
+    await mintTokens(program, mintAddress, tokenAccount, authority.publicKey, mintAmount);
+
+    // Try and burn more than mintAmount (user balance).
+    try {
+      await burnTokens(program, mintAddress, tokenAccount, user, mintAmount + 1);
+      assert.fail("Attempted burn more than balance failed.");
+    } catch (error) {
+      assert.include(error.toString(), "InsufficientFunds");
+      console.log("Attempted burn more than balance failed.");
+    }
   });
 });

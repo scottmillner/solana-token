@@ -13,6 +13,7 @@ describe("solana-token", () => {
   const decimals = 9;
   const { provider: _provider, program, authority } = setup();
 
+  // Happy path test cases
   it("Should initialize token mint", async () => {
     const mintAddress = await initializeMint(
       program,
@@ -193,5 +194,28 @@ describe("solana-token", () => {
     console.log("✅ Burned tokens");
     console.log("   Remaining balance:", accountData.amount.toNumber());
     console.log("   Total supply:", mintData.totalSupply.toNumber());
+  });
+
+  // Error test cases
+  it("Should not transfer more than balance", async () => {
+      const mintAddress = await initializeMint(program, authority.publicKey, decimals);
+      const user1 = Keypair.generate();
+      const user2 = Keypair.generate();
+
+      const user1TokenAccount = await createTokenAccount(program, mintAddress, user1.publicKey, authority.publicKey);
+      const user2TokenAccount = await createTokenAccount(program, mintAddress, user2.publicKey, authority.publicKey);
+
+      // Mint tokens
+      const mintAmount = 100;
+      await mintTokens(program, mintAddress, user1TokenAccount, authority.publicKey, mintAmount);
+
+      // Try and transfer more than mint amount (user 1 balance)
+      try {
+        await transferTokens(program, user1TokenAccount, user2TokenAccount, user1, mintAmount + 1);
+        assert.fail("Expected error was not thrown");
+      } catch (error) {
+        assert.include(error.toString(), "InsufficientFunds");
+        console.log("Attempted transfer greater than balance failed as expected.");
+      }
   });
 });

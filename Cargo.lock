@@ -5449,10 +5449,12 @@ dependencies = [
  "anchor-client",
  "anchor-lang",
  "anyhow",
+ "borsh 0.10.4",
  "clap",
  "shellexpand",
  "solana-client",
  "solana-sdk",
+ "solana-token",
  "tokio",
 ]
 

@@ -9,7 +9,9 @@ use anchor_client::{
 };
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use std::{fs, rc::Rc, str::FromStr};
+use std::{fs, rc::Rc};
+
+mod generated;
 
 declare_id!("48WQW8ZMQKJhV1FKnGrYVDMEoqc8XutQmvKuqcmRrKux");
 

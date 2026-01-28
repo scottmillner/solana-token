@@ -1,13 +1,15 @@
 use anchor_client::{
-    anchor_lang::{self, declare_id},
+    anchor_lang::{self, declare_id, InstructionData, ToAccountMetas},
     solana_sdk::{
         commitment_config::CommitmentConfig,
+        instruction::Instruction,
         pubkey::Pubkey,
         signature::{Keypair, Signer},
+        system_program,
     },
     Client, Cluster, Program,
 };
-use anyhow::Result;
+use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use std::{fs, rc::Rc};
 
@@ -120,6 +122,62 @@ fn derive_token_account(owner: &Pubkey, mint: &Pubkey) -> (Pubkey, u8) {
     Pubkey::find_program_address(&[b"token", owner.as_ref(), mint.as_ref()], &ID)
 }
 
+async fn init(
+    program: &Program<Rc<Keypair>>,
+    payer: &Keypair,
+    decimals: u8,
+    mint_keypair: Option<String>,
+) -> Result<()> {
+    // Load or generate mint keypair
+    let mint = match mint_keypair {
+        Some(path) => load_keypair(&path).context("Failed to load mint keypair")?,
+        None => {
+            let keypair = Keypair::new();
+            let path = format!("mint-{}.json", keypair.pubkey());
+
+            // Save keypair to disk
+            let keypair_bytes = keypair.to_bytes();
+            // TODO: encrypt keypair before saving to disk
+            fs::write(&path, serde_json::to_string(&keypair_bytes.to_vec())?)
+                .context("Failed to write mint keypair to disk")?;
+
+            println!("Generated new mint keypair: {}", path);
+            keypair
+        }
+    };
+
+    // Build initialize instruction using generated code
+    let initialize = generated::initialize::Initialize { decimals };
+    let accounts = generated::initialize::Accounts {
+        mint: mint.pubkey(),
+        authority: payer.pubkey(),
+        system_program: system_program::ID,
+    };
+
+    // Create instruction
+    let instruction = Instruction {
+        program_id: ID,
+        accounts: accounts.to_account_metas(None),
+        data: initialize.data(),
+    };
+
+    // Send transaction with mint as additional signer
+    let signature = program
+        .request()
+        .instruction(instruction)
+        .signer(&mint)
+        .send()
+        .context("Failed to send initialize transaction")?;
+
+    // Print results
+    println!("✓ Token mint initialized");
+    println!("  Mint address: {}", mint.pubkey());
+    println!("  Decimals: {}", decimals);
+    println!("  Transaction: {}", signature);
+
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
@@ -138,9 +196,7 @@ async fn main() -> Result<()> {
             decimals,
             mint_keypair,
         } => {
-            println!("TODO: implement init command");
-            println!("  decimals: {}", decimals);
-            println!("  mint_keypair: {:?}", mint_keypair);
+            init(&program, &payer, decimals, mint_keypair).await?;
         }
         Commands::CreateAccount { mint, owner } => {
             println!("TODO: implement create-account command");

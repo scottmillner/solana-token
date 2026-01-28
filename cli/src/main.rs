@@ -113,7 +113,8 @@ enum Commands {
 
 fn load_keypair(path: &str) -> Result<Keypair> {
     let expanded_path = shellexpand::tilde(path);
-    let keypair_bytes = fs::read(expanded_path.as_ref())?;
+    let file_contents = fs::read_to_string(expanded_path.as_ref())?;
+    let keypair_bytes: Vec<u8> = serde_json::from_str(&file_contents)?;
     let keypair = Keypair::try_from(&keypair_bytes[..])?;
     Ok(keypair)
 }
@@ -232,4 +233,35 @@ async fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+    use tempfile::NamedTempFile;
+
+    #[test]
+    fn test_load_keypair_valid() {
+        // Create a temporary keypair file
+        let keypair = Keypair::new();
+        let keypair_bytes = keypair.to_bytes();
+        let json = serde_json::to_string(&keypair_bytes.to_vec()).unwrap();
+
+        let mut temp_file = NamedTempFile::new().unwrap();
+        temp_file.write_all(json.as_bytes()).unwrap();
+        temp_file.flush().unwrap();
+
+        // Load the keypair
+        let loaded = load_keypair(temp_file.path().to_str().unwrap()).unwrap();
+
+        // Verify the keypair matches
+        assert_eq!(loaded.pubkey(), keypair.pubkey());
+    }
+
+    #[test]
+    fn test_load_keypair_invalid_path() {
+        let result = load_keypair("/nonexistent/path/keypair.json");
+        assert!(result.is_err());
+    }
 }

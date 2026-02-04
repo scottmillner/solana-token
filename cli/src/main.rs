@@ -1,21 +1,8 @@
-use anchor_client::{
-    anchor_lang::{self, declare_id, InstructionData, ToAccountMetas},
-    solana_sdk::{
-        commitment_config::CommitmentConfig,
-        instruction::Instruction,
-        pubkey::Pubkey,
-        signature::{Keypair, Signer},
-        system_program,
-    },
-    Client, Cluster, Program,
-};
-use anyhow::{Context, Result};
+use anchor_client::{solana_sdk::commitment_config::CommitmentConfig, Client, Cluster};
+use anyhow::Result;
 use clap::{Parser, Subcommand};
-use std::{fs, rc::Rc};
-
-mod generated;
-
-declare_id!("48WQW8ZMQKJhV1FKnGrYVDMEoqc8XutQmvKuqcmRrKux");
+use solana_token_cli::{init, load_keypair, ID};
+use std::rc::Rc;
 
 #[derive(Parser)]
 #[command(name = "solana-token-cli")]
@@ -111,74 +98,6 @@ enum Commands {
     },
 }
 
-fn load_keypair(path: &str) -> Result<Keypair> {
-    let expanded_path = shellexpand::tilde(path);
-    let file_contents = fs::read_to_string(expanded_path.as_ref())?;
-    let keypair_bytes: Vec<u8> = serde_json::from_str(&file_contents)?;
-    let keypair = Keypair::try_from(&keypair_bytes[..])?;
-    Ok(keypair)
-}
-
-fn derive_token_account(owner: &Pubkey, mint: &Pubkey) -> (Pubkey, u8) {
-    Pubkey::find_program_address(&[b"token", owner.as_ref(), mint.as_ref()], &ID)
-}
-
-async fn init(
-    program: &Program<Rc<Keypair>>,
-    payer: &Keypair,
-    decimals: u8,
-    mint_keypair: Option<String>,
-) -> Result<()> {
-    // Load or generate mint keypair
-    let mint = match mint_keypair {
-        Some(path) => load_keypair(&path).context("Failed to load mint keypair")?,
-        None => {
-            let keypair = Keypair::new();
-            let path = format!("mint-{}.json", keypair.pubkey());
-
-            // Save keypair to disk
-            let keypair_bytes = keypair.to_bytes();
-            // TODO: encrypt keypair before saving to disk
-            fs::write(&path, serde_json::to_string(&keypair_bytes.to_vec())?)
-                .context("Failed to write mint keypair to disk")?;
-
-            println!("Generated new mint keypair: {}", path);
-            keypair
-        }
-    };
-
-    // Build initialize instruction using generated code
-    let initialize = generated::initialize::Initialize { decimals };
-    let accounts = generated::initialize::Accounts {
-        mint: mint.pubkey(),
-        authority: payer.pubkey(),
-        system_program: system_program::ID,
-    };
-
-    // Create instruction
-    let instruction = Instruction {
-        program_id: ID,
-        accounts: accounts.to_account_metas(None),
-        data: initialize.data(),
-    };
-
-    // Send transaction with mint as additional signer
-    let signature = program
-        .request()
-        .instruction(instruction)
-        .signer(&mint)
-        .send()
-        .context("Failed to send initialize transaction")?;
-
-    // Print results
-    println!("✓ Token mint initialized");
-    println!("  Mint address: {}", mint.pubkey());
-    println!("  Decimals: {}", decimals);
-    println!("  Transaction: {}", signature);
-
-    Ok(())
-}
-
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
@@ -233,35 +152,4 @@ async fn main() -> Result<()> {
     }
 
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::io::Write;
-    use tempfile::NamedTempFile;
-
-    #[test]
-    fn test_load_keypair_valid() {
-        // Create a temporary keypair file
-        let keypair = Keypair::new();
-        let keypair_bytes = keypair.to_bytes();
-        let json = serde_json::to_string(&keypair_bytes.to_vec()).unwrap();
-
-        let mut temp_file = NamedTempFile::new().unwrap();
-        temp_file.write_all(json.as_bytes()).unwrap();
-        temp_file.flush().unwrap();
-
-        // Load the keypair
-        let loaded = load_keypair(temp_file.path().to_str().unwrap()).unwrap();
-
-        // Verify the keypair matches
-        assert_eq!(loaded.pubkey(), keypair.pubkey());
-    }
-
-    #[test]
-    fn test_load_keypair_invalid_path() {
-        let result = load_keypair("/nonexistent/path/keypair.json");
-        assert!(result.is_err());
-    }
 }

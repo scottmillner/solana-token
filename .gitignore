@@ -1,5 +1,7 @@
 .anchor
+.cargo
 .DS_Store
+.vscode
 target
 **/*.rs.bk
 node_modules

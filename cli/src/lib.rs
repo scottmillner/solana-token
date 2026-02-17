@@ -19,11 +19,12 @@ pub fn load_keypair(path: &str) -> Result<Keypair> {
     let expanded_path = shellexpand::tilde(path);
     let file_contents = fs::read_to_string(expanded_path.as_ref())?;
     let keypair_bytes: Vec<u8> = serde_json::from_str(&file_contents)?;
-    let keypair = Keypair::try_from(&keypair_bytes[..])?;
+    let keypair = Keypair::from_bytes(&keypair_bytes.as_slice())
+        .map_err(|e| anyhow::anyhow!("Invalid keypair: {}", e))?;
     Ok(keypair)
 }
 
-pub async fn init(
+pub fn init(
     program: &Program<Rc<Keypair>>,
     payer: &Keypair,
     decimals: u8,

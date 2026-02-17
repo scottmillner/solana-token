@@ -98,8 +98,7 @@ enum Commands {
     },
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
     let cli = Cli::parse();
 
     // Load payer keypair
@@ -116,7 +115,7 @@ async fn main() -> Result<()> {
             decimals,
             mint_keypair,
         } => {
-            init(&program, &payer, decimals, mint_keypair).await?;
+            init(&program, &payer, decimals, mint_keypair)?;
         }
         Commands::CreateAccount { mint, owner } => {
             println!("TODO: implement create-account command");

@@ -145,6 +145,19 @@ The on-chain program already implements all 5 instructions. To add a CLI command
 3. Run `cargo build` — `build.rs` will auto-generate the CLI types
 4. Implement the CLI command (see above)
 
+## Skills
+
+Available as `/slash-commands` in Claude Code. Scripts are also runnable directly.
+
+| Skill | Command | Description |
+|---|---|---|
+| build | `/build` | Runs `anchor build` then `cargo build` |
+| unit-tests | `/unit-tests` | Runs library and generated code tests |
+| integration-tests | `/integration-tests` | Runs integration tests against test validator |
+| deploy-local | `/deploy-local` | Starts local validator and deploys the program |
+
+Skills are defined in `.claude/skills/`.
+
 ## Common Pitfalls
 
 - **Missing IDL**: If `cargo build` fails with "Failed to read IDL file", run `anchor build` first.
